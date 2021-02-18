@@ -39,7 +39,7 @@ class _WeatherAppState extends State<WeatherApp> {
     fetchLocationDay();
   }
 
-  void fetchSearch(String input) async {
+  Future<void> fetchSearch(String input) async {
     try {
       var searchResult = await http.get(searchApiUrl + input);
       var result = json.decode(searchResult.body)[0];
@@ -89,7 +89,7 @@ class _WeatherAppState extends State<WeatherApp> {
     }
   }
 
-  void fetchLocation() async {
+  Future<void> fetchLocation() async {
     var locationResult = await http.get(locationApiUrl + woeid.toString());
     var result = json.decode(locationResult.body);
     var consolidatedWeather = result["consolidated_weather"];
@@ -102,7 +102,7 @@ class _WeatherAppState extends State<WeatherApp> {
     });
   }
 
-  void fetchLocationDay() async {
+  Future<void> fetchLocationDay() async {
     var today = new DateTime.now();
     for (var i = 0; i < 7; i++) {
       var locationDayResult = await http.get(locationApiUrl +
