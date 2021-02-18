@@ -1,12 +1,9 @@
-import 'dart:convert';
-
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-// import 'package:geocoder/geocoder.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'dart:io';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
-import 'package:http/http.dart' as http;
 
 void main() => runApp(WeatherApp());
 
@@ -17,15 +14,17 @@ class WeatherApp extends StatefulWidget {
 
 class _WeatherAppState extends State<WeatherApp> {
   int temperature;
-  int woeid = 922137;
-  String location = 'Kharkiv';
-  String weather = 'clear';
-  String abbrevation = '';
-  String errorMessage = '';
-  Position _currentPosition;
   var minTemperatureForecast = new List(7);
   var maxTemperatureForecast = new List(7);
-  var abbrevationForecast = new List(7);
+  String location = 'Kharkiv';
+  int woeid = 922137;
+  String weather = '1';
+  String abbrevation = '';
+  final abbreviationForecast = new List(7);
+  String errorMessage = '';
+
+  Position _currentPosition;
+  final _controller = TextEditingController();
 
   String searchApiUrl =
       'https://www.metaweather.com/api/location/search/?query=';
@@ -33,7 +32,30 @@ class _WeatherAppState extends State<WeatherApp> {
   String getLocationUsingCordApiUrl =
       'https://www.metaweather.com/api/location/search/?lattlong=';
 
-  var _controller = TextEditingController();
+  @override
+  void initState() {
+    super.initState();
+    fetchLocation();
+    fetchLocationDay();
+  }
+
+  void fetchSearch(String input) async {
+    try {
+      var searchResult = await http.get(searchApiUrl + input);
+      var result = json.decode(searchResult.body)[0];
+
+      setState(() {
+        location = result['title'];
+        woeid = result['woeid'];
+        errorMessage = '';
+      });
+    } catch (error) {
+      setState(() {
+        errorMessage =
+            "Sorry, we don't have information about this sity. Try another one.";
+      });
+    }
+  }
 
   _getCurrentLocation() {
     Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high)
@@ -59,31 +81,6 @@ class _WeatherAppState extends State<WeatherApp> {
         location = result['title'];
       });
       onTextFieldSubmitted(location);
-    } catch (error) {
-      setState(() {
-        errorMessage =
-            "Sorry, we don't have information about this sity. Try another one.";
-      });
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    fetchLocation();
-    fetchLocationDay();
-  }
-
-  void fetchSearch(String input) async {
-    try {
-      var searchResult = await http.get(searchApiUrl + input);
-      var result = json.decode(searchResult.body)[0];
-
-      setState(() {
-        location = result['title'];
-        woeid = result['woeid'];
-        errorMessage = '';
-      });
     } catch (error) {
       setState(() {
         errorMessage =
@@ -120,7 +117,7 @@ class _WeatherAppState extends State<WeatherApp> {
       setState(() {
         minTemperatureForecast[i] = data["min_temp"].round();
         maxTemperatureForecast[i] = data["max_temp"].round();
-        abbrevationForecast[i] = data["weather_state_abbr"];
+        abbreviationForecast[i] = data["weather_state_abbr"];
       });
     }
   }
@@ -142,7 +139,7 @@ class _WeatherAppState extends State<WeatherApp> {
             colorFilter: new ColorFilter.mode(
                 Colors.black.withOpacity(0.6), BlendMode.dstATop)),
       ),
-      child: temperature == null
+      child: maxTemperatureForecast[6] == null
           ? Center(child: CircularProgressIndicator())
           : Scaffold(
               appBar: AppBar(
@@ -196,9 +193,9 @@ class _WeatherAppState extends State<WeatherApp> {
                         for (var i = 0; i < 7; i++)
                           forecastElement(
                               i + 1,
-                              abbrevationForecast[i],
-                              maxTemperatureForecast[i],
-                              minTemperatureForecast[i]),
+                              abbreviationForecast[i],
+                              minTemperatureForecast[i],
+                              maxTemperatureForecast[i]),
                       ],
                     ),
                   ),
@@ -255,7 +252,7 @@ class _WeatherAppState extends State<WeatherApp> {
 }
 
 Widget forecastElement(
-    daysFromNow, abbrevation, maxTemperatureForecast, minTemperatureForecast) {
+    daysFromNow, abbreviation, minTemperature, maxTemperature) {
   var now = new DateTime.now();
   var oneDayFromNow = now.add(new Duration(days: daysFromNow));
   return Padding(
@@ -275,23 +272,23 @@ Widget forecastElement(
             ),
             Text(
               new DateFormat.MMMd().format(oneDayFromNow),
-              style: TextStyle(color: Colors.white, fontSize: 25),
+              style: TextStyle(color: Colors.white, fontSize: 20),
             ),
             Padding(
-              padding: const EdgeInsets.only(top: 16, bottom: 16),
+              padding: const EdgeInsets.only(top: 16.0, bottom: 16.0),
               child: Image.network(
                 'https://www.metaweather.com/static/img/weather/png/' +
-                    abbrevation +
+                    abbreviation +
                     '.png',
                 width: 50,
               ),
             ),
             Text(
-              'Max:' + maxTemperatureForecast.toString() + ' °C',
+              'High: ' + maxTemperature.toString() + ' °C',
               style: TextStyle(color: Colors.white, fontSize: 20.0),
             ),
             Text(
-              'Min:' + minTemperatureForecast.toString() + ' °C',
+              'Low: ' + minTemperature.toString() + ' °C',
               style: TextStyle(color: Colors.white, fontSize: 20.0),
             ),
           ],
