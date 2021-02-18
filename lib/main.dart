@@ -42,6 +42,7 @@ class _WeatherAppState extends State<WeatherApp> {
   //     correntPosition = position;
   //   });
   // }
+  var _controller = TextEditingController();
 
   _getCurrentLocation() {
     Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high)
@@ -199,8 +200,10 @@ class _WeatherAppState extends State<WeatherApp> {
                       Container(
                         width: 250,
                         child: TextField(
+                          controller: _controller,
                           onSubmitted: (String input) {
                             onTextFieldSubmitted(input);
+                            _controller.clear();
                           },
                           style: TextStyle(color: Colors.white, fontSize: 25),
                           decoration: InputDecoration(
