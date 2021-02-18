@@ -5,7 +5,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 // import 'package:geocoder/geocoder.dart';
 import 'package:geolocator/geolocator.dart';
-
+import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 
 void main() => runApp(WeatherApp());
@@ -23,7 +23,9 @@ class _WeatherAppState extends State<WeatherApp> {
   String abbrevation = '';
   String errorMessage = '';
   Position _currentPosition;
-  // String _currentAddress;
+  var minTemperatureForecast = new List(7);
+  var maxTemperatureForecast = new List(7);
+  var abbrevationForecast = new List(7);
 
   String searchApiUrl =
       'https://www.metaweather.com/api/location/search/?query=';
@@ -31,17 +33,6 @@ class _WeatherAppState extends State<WeatherApp> {
   String getLocationUsingCordApiUrl =
       'https://www.metaweather.com/api/location/search/?lattlong=';
 
-  // Position _positionItem;
-  // String _currentAddress;
-  // void getposition() async {
-  //   Position position = await Geolocator.getCurrentPosition(
-  //       desiredAccuracy: LocationAccuracy.high);
-  //   print(position);
-
-  //   setState(() {
-  //     correntPosition = position;
-  //   });
-  // }
   var _controller = TextEditingController();
 
   _getCurrentLocation() {
@@ -57,27 +48,6 @@ class _WeatherAppState extends State<WeatherApp> {
       print(e);
     });
   }
-
-  // _getAddressFromLatLng() async {
-  //   //call this async method from whereever you need
-
-  //   final coordinates =
-  //       // new Coordinates(_currentPosition.latitude, _currentPosition.longitude);
-  //       new Coordinates(22.334045050096638, 114.17622894161046);
-  //   // print(coordinates);
-  //   Locale locale = new Locale('en', 'EN');
-  //   // final geocoder = new Geocoder(this, locale);
-  //   var addresses = await Geocoder.local.findAddressesFromCoordinates(
-  //     coordinates,
-  //   );
-  //   var first = addresses.first;
-  //   // print(first);
-  //   // print(
-  //   //     ' ${first.locality}, ${first.adminArea},${first.subLocality}, ${first.subAdminArea},${first.addressLine}, ${first.featureName},${first.thoroughfare}, ${first.subThoroughfare}');
-  //   print(
-  //       ' ${first.locality},${first.subLocality}, ${first.subAdminArea},${first.addressLine}, ${first.featureName},${first.thoroughfare}, ${first.subThoroughfare}');
-  //   return first;
-  // }
 
   _getCity() async {
     try {
@@ -101,6 +71,7 @@ class _WeatherAppState extends State<WeatherApp> {
   void initState() {
     super.initState();
     fetchLocation();
+    fetchLocationDay();
   }
 
   void fetchSearch(String input) async {
@@ -134,9 +105,30 @@ class _WeatherAppState extends State<WeatherApp> {
     });
   }
 
+  void fetchLocationDay() async {
+    var today = new DateTime.now();
+    for (var i = 0; i < 7; i++) {
+      var locationDayResult = await http.get(locationApiUrl +
+          woeid.toString() +
+          '/' +
+          new DateFormat('y/M/d')
+              .format(today.add(new Duration(days: i + 1)))
+              .toString());
+      var result = json.decode(locationDayResult.body);
+      var data = result[0];
+
+      setState(() {
+        minTemperatureForecast[i] = data["min_temp"].round();
+        maxTemperatureForecast[i] = data["max_temp"].round();
+        abbrevationForecast[i] = data["weather_state_abbr"];
+      });
+    }
+  }
+
   void onTextFieldSubmitted(String input) async {
     await fetchSearch(input);
     await fetchLocation();
+    await fetchLocationDay();
   }
 
   @override
@@ -145,9 +137,10 @@ class _WeatherAppState extends State<WeatherApp> {
         home: Container(
       decoration: BoxDecoration(
         image: DecorationImage(
-          image: AssetImage('images/$weather.png'),
-          fit: BoxFit.cover,
-        ),
+            image: AssetImage('images/$weather.png'),
+            fit: BoxFit.cover,
+            colorFilter: new ColorFilter.mode(
+                Colors.black.withOpacity(0.6), BlendMode.dstATop)),
       ),
       child: temperature == null
           ? Center(child: CircularProgressIndicator())
@@ -160,13 +153,14 @@ class _WeatherAppState extends State<WeatherApp> {
                       onTap: () {
                         _getCurrentLocation();
                       },
-                      child: Icon(Icons.location_city, size: 36.0),
+                      child: Icon(Icons.add_location_outlined, size: 36.0),
                     ),
                   )
                 ],
                 backgroundColor: Colors.transparent,
                 elevation: 0.0,
               ),
+              resizeToAvoidBottomInset: false,
               backgroundColor: Colors.transparent,
               body: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -195,6 +189,19 @@ class _WeatherAppState extends State<WeatherApp> {
                       ),
                     ],
                   ),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: <Widget>[
+                        for (var i = 0; i < 7; i++)
+                          forecastElement(
+                              i + 1,
+                              abbrevationForecast[i],
+                              maxTemperatureForecast[i],
+                              minTemperatureForecast[i]),
+                      ],
+                    ),
+                  ),
                   Column(
                     children: <Widget>[
                       Container(
@@ -222,6 +229,22 @@ class _WeatherAppState extends State<WeatherApp> {
                           fontSize: Platform.isAndroid ? 15 : 20,
                         ),
                       ),
+                      Container(
+                        margin: EdgeInsets.all(10),
+                        height: 50.0,
+                        child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18.0),
+                                  side: BorderSide(color: Colors.transparent)),
+                              padding: EdgeInsets.all(10.0),
+                              primary: Colors.transparent,
+                              textStyle:
+                                  TextStyle(color: Colors.white, fontSize: 17),
+                            ),
+                            onPressed: _getCurrentLocation,
+                            child: Text('Use current location!')),
+                      ),
                     ],
                   )
                 ],
@@ -229,4 +252,51 @@ class _WeatherAppState extends State<WeatherApp> {
             ),
     ));
   }
+}
+
+Widget forecastElement(
+    daysFromNow, abbrevation, maxTemperatureForecast, minTemperatureForecast) {
+  var now = new DateTime.now();
+  var oneDayFromNow = now.add(new Duration(days: daysFromNow));
+  return Padding(
+    padding: const EdgeInsets.only(left: 16.0),
+    child: Container(
+      decoration: BoxDecoration(
+        color: Color.fromRGBO(205, 212, 228, 0.2),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: <Widget>[
+            Text(
+              new DateFormat.E().format(oneDayFromNow),
+              style: TextStyle(color: Colors.white, fontSize: 25),
+            ),
+            Text(
+              new DateFormat.MMMd().format(oneDayFromNow),
+              style: TextStyle(color: Colors.white, fontSize: 25),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 16, bottom: 16),
+              child: Image.network(
+                'https://www.metaweather.com/static/img/weather/png/' +
+                    abbrevation +
+                    '.png',
+                width: 50,
+              ),
+            ),
+            Text(
+              'Max:' + maxTemperatureForecast.toString() + ' °C',
+              style: TextStyle(color: Colors.white, fontSize: 20.0),
+            ),
+            Text(
+              'Min:' + minTemperatureForecast.toString() + ' °C',
+              style: TextStyle(color: Colors.white, fontSize: 20.0),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
