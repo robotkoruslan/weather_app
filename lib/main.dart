@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
+import 'package:weather_app/widgets/week_forecast.dart';
 
 void main() => runApp(WeatherApp());
 
